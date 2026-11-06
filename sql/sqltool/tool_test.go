@@ -435,3 +435,52 @@ func requireFileEqual(t *testing.T, d migrate.Dir, name, contents string) {
 	require.NoError(t, err)
 	require.Equal(t, contents, string(c))
 }
+
+func TestPragmaLikeLines(t *testing.T) {
+	for name, tt := range map[string]struct {
+		file  func(*migrate.LocalFile) migrate.File
+		data  string
+		stmts []string
+	}{
+		"goose": {
+			file: func(f *migrate.LocalFile) migrate.File { return &sqltool.GooseFile{LocalFile: f} },
+			data: `-- +goose Up
+INSERT INTO items (label)
+VALUES ('Download report')
+ON CONFLICT DO NOTHING;
+
+-- +goose StatementBegin
+UPDATE items SET label = 'StatementEnd'
+WHERE label = 'Up';
+-- +goose StatementEnd
+
+-- +goose Down
+DROP TABLE items;
+`,
+			stmts: []string{
+				"INSERT INTO items (label)\nVALUES ('Download report')\nON CONFLICT DO NOTHING;",
+				"UPDATE items SET label = 'StatementEnd'\nWHERE label = 'Up';",
+			},
+		},
+		"dbmate": {
+			file: func(f *migrate.LocalFile) migrate.File { return &sqltool.DBMateFile{LocalFile: f} },
+			data: `-- migrate:up
+INSERT INTO items (label)
+VALUES ('shutdown report')
+ON CONFLICT DO NOTHING;
+
+-- migrate:down
+DROP TABLE items;
+`,
+			stmts: []string{
+				"INSERT INTO items (label)\nVALUES ('shutdown report')\nON CONFLICT DO NOTHING;",
+			},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			stmts, err := tt.file(migrate.NewLocalFile("1_items.sql", []byte(tt.data))).Stmts()
+			require.NoError(t, err)
+			require.Equal(t, tt.stmts, stmts)
+		})
+	}
+}

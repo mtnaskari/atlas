@@ -478,8 +478,8 @@ const (
 )
 
 var (
-	reGoosePragma  = regexp.MustCompile(regexp.QuoteMeta(goosePragma) + " Up|Down|StatementBegin|StatementEnd")
-	reDBMatePragma = regexp.MustCompile(dbmatePragma + "up|down")
+	reGoosePragma  = regexp.MustCompile("^" + regexp.QuoteMeta(goosePragma) + " (Up|Down|StatementBegin|StatementEnd)")
+	reDBMatePragma = regexp.MustCompile("^" + dbmatePragma + "(up|down)")
 )
 
 // flywayFiles retrieves flyway migration files by calls to add(). It will only keep the latest baseline and ignore
